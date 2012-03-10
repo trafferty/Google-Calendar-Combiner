@@ -1,0 +1,9 @@
+gcal_combiner - Google Calendar Combiner
+
+Overview
+
+Allows aggregation of events from multiple google calendar accounts into a single list.  Outputs a png image of top events.  Configuration via JSON document.
+
+Details
+
+A while back, I got one of those chumby (http://www.chumby.com/) devices.  Pretty cool, but I couldn't find an app on it that would do what I needed:  combine the tasks/events from multiple google calendar accounts into one list, so my wife and I could easily see both of our calendar events (plus a shared calendar and a national holidays calendar) all on one chumby screen.  ...
