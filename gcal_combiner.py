@@ -3,7 +3,6 @@ import sys
 import os.path
 import time
 import math
-import json
 try:
   from xml.etree import ElementTree
 except ImportError:
@@ -11,14 +10,10 @@ except ImportError:
 import gdata.calendar.client
 import gdata.calendar.data
 import atom
-import ImageDraw
-import ImageFont
-import Image
 
-# Enums for the event object
-TITLE, DATE_STR, TIME_STR, DELTA_SECS, CAL_NAME, TEXT_COLOR = range(6)
-# Enums for the linesToPrint object
-TEXT_TO_PRINT, FONT_COLOR = range(2)
+# Enums for the event object:
+# ['cal_name', delta_sec, 'event_title', 'event_date', 'event_time']
+CAL_NAME, DELTA_SECS, TITLE, DATE_STR, TIME_STR = range(5)
 
 class gcal_combiner:
    """   Google Calendar Query Combiner
@@ -39,16 +34,14 @@ class gcal_combiner:
    def __init__(self, days_in_future):
       self.calendar_client = gdata.calendar.client.CalendarClient()
       self.calendar_data = []
-      self.combined_entries = []
-      self.cal_entries = {}
+      self.combined_events = []
       self.days_in_future = days_in_future
 
-   def addCalendarData(self, calendar_user, visibility, cal_name, font_color):
+   def addCalendarData(self, calendar_user, visibility, cal_name):
       new_cal_data = []
       new_cal_data.append(calendar_user)
       new_cal_data.append(visibility)
       new_cal_data.append(cal_name)
-      new_cal_data.append(font_color)
       self.calendar_data.append(new_cal_data)
 
    def fetchCalendarEvents(self):
@@ -68,7 +61,7 @@ class gcal_combiner:
             if (len(an_event.title.text) > 0) and (an_event.event_status.value.find('event.confirmed') >= 0):
                for a_when in an_event.when:
                   if a_when.start.find('T') > 0:
-                     print "Event %d: %s" % (i, a_when)
+                     #print "Event %d: %s" % (i, a_when)
                      event_start = a_when.start[0:19]
                      event_end = a_when.end[0:10]
                      eventDate, eventTime = a_when.start.split('T')
@@ -94,62 +87,51 @@ class gcal_combiner:
                      event_ts = time.mktime(time.strptime(event_start, "%Y-%m-%d")) + (dst_adjust * 3600)
 
                   delta_secs = int(event_ts - now_ts)
-                  print '\t%s: %s (delta_secs: %d)' % (an_event.title.text, eventDateTimeStr, delta_secs)
+                  #print '\t%s: %s (delta_secs: %d)' % (an_event.title.text, eventDateTimeStr, delta_secs)
                   
                   '''build the event:
-                     [event_title, event_date, event_time, event_delta_secs]
-                     ...then add to the event list
+                     [cal_name, event_delta_secs, event_title, event_date, event_time]
+                     ...then add to the combined event list
                   '''
                   event = []
                   event.append(cal_data[2])          # add cal_name
                   event.append(delta_secs)           # add DELTA_SECS
                   event.append(an_event.title.text)  # add TITLE
-                  event.append(eventDate)      # add DATE_STR
-                  event.append(eventTime)      # add TIME_STR
+                  event.append(eventDate)            # add DATE_STR
+                  event.append(eventTime)            # add TIME_STR
                   # append to the event list
-                  eventList.append(event)
-
-         new_combined_entry = []
-         new_combined_entry.append(eventList)
-         new_combined_entry.append(cal_data[2])
-         new_combined_entry.append(cal_data[3])
-         self.combined_entries.append(new_combined_entry)
+                  self.combined_events.append(event)
 
       self.total_entries = 0
       print '*********************************************************'
-      print "Fetched data from %d calendars:" % len(self.combined_entries)
-      for combined_entry in self.combined_entries:
-         self.total_entries += len(combined_entry[0])
-         print "\t%s: %d events" % (combined_entry[1], len(combined_entry[0]))
-      print "Total entries in next %d days: %d" % ( self.days_in_future, self.total_entries)
+      print "Fetched data from %d calendars:" % len(self.calendar_data)
 
-   def buildEventList(self):
+   def buildLinesToPrint(self):
       # sort it based on delta (earliest first)
-      eventList_sorted = sorted(self.combined_entries, key=lambda days: days[2])
+      eventList_sorted = sorted(self.combined_events, key=lambda days: days[1])
       
+      linesToPrint = []
       # next, build the list of lines to print.
-      self.linesToPrint_list = []
-      # for each event, build a line string, then add line plus font color to line
-      # to print object, then add this to list of lines to print
+      # for each event, build a line string, then add line plus cal_name to list
+      # of lines to print
       for event in eventList_sorted:
-         print " event:"
-         print event
-         # # we only want events that are in the future, but no more than 90 days
-         # if (event[DELTA_SECS] > -1) and (event[DELTA_SECS] <= (self.days_in_future*86400)):
-         #    # if delta_secs is less than a day, print in hours
-         #    if event[DELTA_SECS] > 86400:
-         #       delta_days = round(event[DELTA_SECS]/86400.0)
-         #       line = "%02dd: %s, %s (%s)" % (delta_days, event[TITLE], event[DATE_STR], event[TIME_STR])
-         #    else:
-         #       delta_hours = round(event[DELTA_SECS]/3600.0)
-         #       line = "%02dh: %s, %s (%s)" % (delta_hours, event[TITLE], event[DATE_STR], event[TIME_STR])            
-         #    lineToPrint = []
-         #    lineToPrint.append(line)               # add TEXT_TO_PRINT
-         #    lineToPrint.append(event[TEXT_COLOR])  # add FONT_COLOR
-         #    self.linesToPrint_list.append(lineToPrint)
-         #    print "Added (%s) - %s" % (event[CAL_NAME], line)
-         # else:
-         #    line = "%02dd: %s, %s (%s)" % (event[DELTA_SECS], event[TITLE], event[DATE_STR], event[TIME_STR])
-         #    print "Omitted (%s) - %s" % (event[CAL_NAME], line)
+         if (event[DELTA_SECS] > -1) and (event[DELTA_SECS] <= (self.days_in_future*86400)):
+            # if delta_secs is less than 2 hours, print in min
+            # if delta_secs is less than a day, print in hours
+            if event[DELTA_SECS] > 86400:
+               delta_days = round(event[DELTA_SECS]/86400.0)
+               line = "%02dd: %s, %s (%s)" % (delta_days, event[TITLE], event[DATE_STR], event[TIME_STR])
+            else:
+               delta_hours = round(event[DELTA_SECS]/3600.0)
+               line = "%02dh: %s, %s (%s)" % (delta_hours, event[TITLE], event[DATE_STR], event[TIME_STR])            
+            lineToPrint = []
+            lineToPrint.append(line)             # add text 
+            lineToPrint.append(event[CAL_NAME])  # add CAL_NAME
+            linesToPrint.append(lineToPrint)
+            print "Added (%s) - %s" % (lineToPrint[1], lineToPrint[0])
+         else:
+            line = "%02dd: %s, %s (%s)" % (event[DELTA_SECS], event[TITLE], event[DATE_STR], event[TIME_STR])
+            print "Omitted (%s) - %s" % (event[CAL_NAME], line)
+      return linesToPrint
 
 

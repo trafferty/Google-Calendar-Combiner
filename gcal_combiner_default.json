@@ -1,0 +1,32 @@
+{
+  "font_path": "/Library/Fonts/Arial.ttf",
+  "num_days_to_search": 90,
+  "y_pitch": 16,
+  "Cals": [
+    {
+      "cal_name": "Holidays",
+      "URI_Parms": [
+        "usa__en@holiday.calendar.google.com",
+        "public"
+      ],
+      "font_color": "darkorange"
+    }
+  ],
+  "Images": [
+    {
+      "path": "gcal.png",
+      "width":  320,
+      "height": 240
+    },
+    {
+      "path": "gcal_mid.png",
+      "width":  600,
+      "height": 600
+    },
+    {
+      "path": "gcal_full.png",
+      "width":  800,
+      "height": "MAX"
+    }
+  ]
+}
