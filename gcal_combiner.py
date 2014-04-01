@@ -20,15 +20,20 @@ class gcal_combiner:
       
       Allows aggregation of events from multiple google calendar accounts into a single list.
 
-      After creation, use 'addCalendarData' to add new cal data:
+      Create an instance of the gcal_combiner class, passing in the number of days in the future that 
+      you want to get calendar data from.
+
+      After instantiation, use 'addCalendarData' to add new calender data:
         calendar_user: Google user name for calendar, ie, 'usa__en@holiday.calendar.google.com'
         visibility   : Visibility data for calendar, ie, 'public', or 'private-some_guid_data'
         cal_name     : name used to distinguish this calendar's data, ie, "JacksCal"
-        font_color   : font color to be used for rendering
 
-      Then call 'fetchCalendarEvents', which gets data from google calendar for each calendar
-      which was added.  It has one argument, 'days_in_future', which limits how far in future to 
-      fetch entires.
+      Then call 'fetchCalendarEvents', which uses gdata.calendar.client to get data from google 
+      calendar for each calendar which was added.  This method produces a single list of events
+      from all calendars.
+
+      Finally, a call to 'buildLinesToPrint' takes the combined list of events, sorts it according 
+      to events closest in the future, and formats the lines into a list that is returned.
    """
       
    def __init__(self, days_in_future):
