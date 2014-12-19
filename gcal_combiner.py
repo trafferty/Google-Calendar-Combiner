@@ -57,7 +57,10 @@ class gcal_combiner:
          end_date = time.strftime("%Y-%m-%d", time.gmtime(time.time() + (self.days_in_future * 86400)))
          query = gdata.calendar.client.CalendarEventQuery(start_min=start_date, start_max=end_date)
          # set adjustment factor for day light savings time (5 in winter, 6 other times)
-         dst_adjust = 6
+         if time.localtime().tm_isdst == 0:
+            dst_adjust = 6
+         else:
+            dst_adjust = 5
          feed = self.calendar_client.GetCalendarEventFeed(uri=feed_uri, q=query)
          print "Obtained %d entries from cal: %s" % (len(feed.entry), cal_data[2])
          

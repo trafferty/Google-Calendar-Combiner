@@ -12,6 +12,10 @@ from oauth2client import file
 from oauth2client import tools
 from oauth2client.file import Storage
 
+# Enums for the event object:
+# ['cal_name', delta_sec, 'event_title', 'event_date', 'event_time']
+CAL_NAME, DELTA_SECS, TITLE, DATE_STR, TIME_STR = range(5)
+
 def getAPIservice(args, name, version, client_secrets_file, scope=None, parents=[], discovery_filename=None):
     """A common initialization routine for samples.
 
@@ -122,6 +126,7 @@ if time.localtime().tm_isdst == 0:
 else:
     print "Times will be adjusted for daylight savings time"
     dst_adjust = 5
+now_ts = time.mktime(time.gmtime(time.time()))
 
 page_token = None
 #calendar_id= u'ts87a0uvmltvnr3o7d7kh8vh9a3i5el7@import.calendar.google.com'
@@ -130,19 +135,19 @@ page_token = None
 calendar_id= u'fjtausch@gmail.com'
 #calendar_id= u'qmte51ju2ppoe5vulg7ruug2b4@group.calendar.google.com'
 
-print(">>>>>>>>>> Events for calendar id: %s" % calendar_id)
-while True:
-    events = service.events().list(calendarId=calendar_id, timeMax=time_max, timeMin=time_min, pageToken=page_token).execute()
-    #events = service.events().list(calendarId='primary', timeMax=time_max, timeMin=time_min, pageToken=page_token).execute()
-    for event in events['items']:
-        if 'summary' in event:
-            combined_events.append(event)
-            print("%s - %s" % (event['summary'], ""))
-    page_token = events.get('nextPageToken')
-    if not page_token:
-        break
+# print(">>>>>>>>>> Events for calendar id: %s" % calendar_id)
+# while True:
+#     events = service.events().list(calendarId=calendar_id, timeMax=time_max, timeMin=time_min, pageToken=page_token).execute()
+#     #events = service.events().list(calendarId='primary', timeMax=time_max, timeMin=time_min, pageToken=page_token).execute()
+#     for event in events['items']:
+#         #if 'summary' in event:
+#             #combined_events.append(event)
+#             #print("%s - %s" % (event['summary'], ""))
+#     page_token = events.get('nextPageToken')
+#     if not page_token:
+#         break
 
-if 0:
+if 1:
     for calendar_id in calendar_id_list:
         print(">>>>>>>>>> Events for calendar id: %s" % calendar_id)
         while True:
@@ -150,9 +155,86 @@ if 0:
             #events = service.events().list(calendarId='primary', timeMax=time_max, timeMin=time_min, pageToken=page_token).execute()
             for event in events['items']:
                 if 'summary' in event:
-                    combined_events
+                    if 'dateTime' in event['start']:
+                        event['all_day'] = False
+                        event_start, event_time = event['start']['dateTime'].split('T')
 
-                    print("%s - %s" % (event['summary'], ""))
+                        # convert date from "YYYY-MM-DD" to "Day, Mon date"
+                        eventDate = time.strftime("%a, %b %d", time.strptime(event_start, "%Y-%m-%d"))
+
+                        # parse out HH, MM and convert time from 24hr to 12hr format
+                        hour, min = event_time[0:5].split(':')
+                        if int(hour) > 12:
+                            eventTime = '%d:%sP' % ((int(hour) - 12), min)
+                        elif int(hour) == 12:
+                            eventTime = eventTime + 'P'
+                        else:
+                            eventTime = eventTime + 'A'
+
+                        eventDateTimeStr = "%s - %s" % (eventDate, eventTime)
+                        event_ts = time.mktime(time.strptime(event['start']['dateTime'][0:19], "%Y-%m-%dT%H:%M:%S")) + (dst_adjust * 3600)
+                    else:
+                        event['all_day'] = True
+                        event_start = event['start']['date']
+                        eventTime = "All Day"
+
+                        # convert date from "YYYY-MM-DD" to "Day, Mon date"
+                        eventDate = time.strftime("%a, %b %d", time.strptime(event_start[0:10], "%Y-%m-%d"))
+                        eventDateTimeStr = "%s" % (eventDate)
+                        event_ts = time.mktime(time.strptime(event_start[0:19], "%Y-%m-%d")) + (dst_adjust * 3600)
+
+                    delta_secs = int(event_ts - now_ts)
+                    #print '\t%s: %s (delta_secs: %d)' % (an_event.title.text, eventDateTimeStr, delta_secs)
+                    
+                    '''
+                       build the new event:
+                       [cal_name, event_delta_secs, event_title, event_date, event_time]
+                       ...then add to the combined event list
+                    '''
+                    new_event = []
+                    new_event.append(calendar_id)          # add cal_name
+                    new_event.append(delta_secs)           # add DELTA_SECS
+                    new_event.append(event['summary'])     # add TITLE
+                    new_event.append(eventDate)            # add DATE_STR
+                    new_event.append(eventTime)            # add TIME_STR
+                    # append to the event list
+                    combined_events.append(new_event)
+
             page_token = events.get('nextPageToken')
             if not page_token:
                 break
+
+print '*********************************************************'
+print "Fetched data from %d calendars:" % len(calendar_id_list)
+
+#print combined_events
+
+# sort it based on delta (earliest first)
+eventList_sorted = sorted(combined_events, key=lambda x: x[1])
+#combined_events.sort(key=lambda x: x[1])
+
+linesToPrint = []
+days_in_future=90
+# next, build the list of lines to print.
+# for each event, build a line string, then add line plus cal_name to list
+# of lines to print
+for event in eventList_sorted:
+ if (event[DELTA_SECS] > -1) and (event[DELTA_SECS] <= (days_in_future*86400)):
+    # if delta_secs is less than 2 hours, print in min
+    # if delta_secs is less than a day, print in hours
+    if event[DELTA_SECS] > 86400:
+       delta_days = round(event[DELTA_SECS]/86400.0)
+       line = "%02dd: %s, %s (%s)" % (delta_days, event[TITLE], event[DATE_STR], event[TIME_STR])
+    else:
+       delta_hours = round(event[DELTA_SECS]/3600.0)
+       line = "%02dh: %s, %s (%s)" % (delta_hours, event[TITLE], event[DATE_STR], event[TIME_STR])            
+    lineToPrint = []
+    lineToPrint.append(line)             # add text 
+    lineToPrint.append(event[CAL_NAME])  # add CAL_NAME
+    linesToPrint.append(lineToPrint)
+    print "Added (%s) - %s" % (lineToPrint[1], lineToPrint[0])
+ else:
+    line = "%02dd: %s, %s (%s)" % (event[DELTA_SECS], event[TITLE], event[DATE_STR], event[TIME_STR])
+    print "Omitted (%s) - %s" % (event[CAL_NAME], line)
+
+
