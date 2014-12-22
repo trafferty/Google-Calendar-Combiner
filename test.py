@@ -111,14 +111,14 @@ time_min='2014-12-01T23:00:00Z'
 time_max='2015-02-28T23:00:00Z'
 calendar_id_list = []
 
-while True:
-    calendar_list = service.calendarList().list(pageToken=page_token).execute()
-    for calendar_list_entry in calendar_list['items']:
-        print("%s, %s" % (calendar_list_entry['summary'], calendar_list_entry['id']))
-        calendar_id_list.append(calendar_list_entry['id'])
-    page_token = calendar_list.get('nextPageToken')
-    if not page_token:
-        break
+# while True:
+#     calendar_list = service.calendarList().list(pageToken=page_token).execute()
+#     for calendar_list_entry in calendar_list['items']:
+#         print("%s, %s" % (calendar_list_entry['summary'], calendar_list_entry['id']))
+#         calendar_id_list.append(calendar_list_entry['id'])
+#     page_token = calendar_list.get('nextPageToken')
+#     if not page_token:
+#         break
 
 combined_events = []
 if time.localtime().tm_isdst == 0:
@@ -129,11 +129,16 @@ else:
 now_ts = time.mktime(time.gmtime(time.time()))
 
 page_token = None
-#calendar_id= u'ts87a0uvmltvnr3o7d7kh8vh9a3i5el7@import.calendar.google.com'
-#calendar_id= u'3en3c0r18aubc8jhdds2ba27u499lo7o@import.calendar.google.com'
-#calendar_id= u'mleu1end2d2pf2vqs5l0umtsvreq0bi7@import.calendar.google.com'
-calendar_id= u'fjtausch@gmail.com'
-#calendar_id= u'qmte51ju2ppoe5vulg7ruug2b4@group.calendar.google.com'
+calendar_id_list.append(u'ts87a0uvmltvnr3o7d7kh8vh9a3i5el7@import.calendar.google.com')
+calendar_id_list.append(u'3en3c0r18aubc8jhdds2ba27u499lo7o@import.calendar.google.com')
+calendar_id_list.append(u'mleu1end2d2pf2vqs5l0umtsvreq0bi7@import.calendar.google.com')
+calendar_id_list.append(u'fjtausch@gmail.com')
+calendar_id_list.append(u'qmte51ju2ppoe5vulg7ruug2b4@group.calendar.google.com')
+calendar_id_list.append(u'tom.rafferty@briggo.com')
+calendar_id_list.append(u'thomasrafferty@gmail.com')
+calendar_id_list.append(u'#contacts@group.v.calendar.google.com')
+calendar_id_list.append(u'en.usa#holiday@group.v.calendar.google.com')
+
 
 # print(">>>>>>>>>> Events for calendar id: %s" % calendar_id)
 # while True:
